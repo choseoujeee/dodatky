@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Registr smluv">
+  <meta name="keywords" content="Registr smluv,Veřejná smlouva,Zveřejněná smlouva,Veřejné smlouvy,Portál smluv,Zákon 340/2015,e-government smlouvy">
+  <title>Podrobné vyhledávání | Registr smluv</title>
+  <link rel="stylesheet" type="text/css" href="/css/normalize.css">
+  <link rel="stylesheet" type="text/css" href="/css/grid.css">
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+  <script src="/js/webfont.js"></script>
+  <script type="text/javascript" src="/js/modernizr.js"></script>
+<link rel="stylesheet" type="text/css" href="/css/jquery-ui.min.css">
+<link rel="stylesheet" type="text/css" href="/css/jquery-ui.structure.min.css">
+<link rel="stylesheet" type="text/css" href="/css/jquery-ui.theme.min.css"><link rel="stylesheet" type="text/css" href="/css/overlay.css">
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1 class="page-header"><a href="/">Registr smluv</a></h1>
+
+      <div class="menu">
+      	<nav id="nav" role="navigation">
+            <a href="#nav" id="toggle" title="Zobrazit navigaci">&nbsp;</a>
+            <a href="#" id="" title="Skrýt navigaci">&nbsp;</a>
+            <ul class="clearfix toggle">
+                    <li><a href="/" role="menuitem">Úvod</a></li>
+                    <li>
+                      <a href="/stranka/jak-publikovat" aria-haspopup="true"><span>Jak publikovat</span></a>
+                      <ul>
+                          <li><a href="/stranka/metodika">Metodika</a></li>
+                          <li><a href="/stranka/co-delam-spatne">Co dělám špatně?</a></li>
+                          <li><a href="/stranka/publikacni-formulare">Publikační formuláře</a></li>
+                          <li><a href="/stranka/popis-aplikacniho-rozhrani-isrs">Aplikační rozhraní ISRS</a></li>
+                          <li><a href="/stranka/testovaci-prostredi">Testovací prostředí</a></li>
+                          <li><a href="/stranka/anonymizace-dokumentu">Anonymizace dokumentů</a></li>
+                      </ul>
+                    </li>
+                    <li><a href="/vyhledavani" role="menuitem" class="active">Podrobné vyhledávání</a></li>
+                    <li>
+                      <a href="/stranka/caste-dotazy" aria-haspopup="true"><span>Časté dotazy</span></a>
+                      <ul>
+                          <li><a href="/stranka/pravni-ramec">Právní rámec</a></li>
+                          <li><a href="/stranka/technicke-reseni">Technické řešení</a></li>
+                          <li><a href="/stranka/otevrena-data">Otevřená data</a></li>
+                          <li><a href="/stranka/popis-nasazenych-uprav">Popis nasazených úprav</a></li>
+                      </ul>
+                    </li>
+            </ul>
+      	</nav>
+
+        <div class="menu-search">
+          <div class="w-form">
+            <form class="w-clearfix" role="search" method="get" action="/vyhledavani">
+              <label for="search">Vyhledat</label>
+              <input id="search" type="text" placeholder="Zadejte hledaný text" name="q" class="w-input search-box" alt="Zadejte hledaný text" value="">
+              <input type="submit" value="vyhledat" data-wait="Prosím čekejte..." class="w-button search-button" alt="Vyhledat">
+            </form>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+<section class="w-section content" role="main">
+  <div class="container ajax-overlay">
+    <div class="w-row detailed-search">
+      <h2 class="top">Podrobné vyhledávání</h2>
+      <form action="/vyhledavani" method="get" id="frm-detailedSearchForm">
+        <div class="w-col w-col-4">
+          <fieldset>
+            <div class="boxed">
+              <label for="frm-detailedSearchForm-publication_date-from">Datum zveřejnění (od - do)</label>
+              <div class="half"><input type="text" name="publication_date[from]" class="date" placeholder="od" alt="od" tabindex="1" id="frm-detailedSearchForm-publication_date-from" data-nette-rules='[{"op":":filled","rules":[{"op":":pattern","msg":"Nevalidní formát data (dd.mm.rrrr)","arg":"\\d{1,2}\\.\\d{1,2}.\\d{4}"}],"control":"publication_date[from]"}]'></div>
+              <div class="space">-</div><label class="hidden" for="frm-detailedSearchForm-publication_date-to">do</label>
+              <div class="half"><input type="text" name="publication_date[to]" class="date" placeholder="do" alt="do" tabindex="2" id="frm-detailedSearchForm-publication_date-to" data-nette-rules='[{"op":":filled","rules":[{"op":":pattern","msg":"Nevalidní formát data (dd.mm.rrrr)","arg":"\\d{1,2}\\.\\d{1,2}.\\d{4}"}],"control":"publication_date[to]"}]'></div>
+            </div>
+            <label class="not-required" for="frm-detailedSearchForm-subject_name">Název publikujícího subjektu</label>
+            <input type="text" name="subject_name" class="autocomplete" tabindex="5" id="frm-detailedSearchForm-subject_name">
+            <label for="frm-detailedSearchForm-subject_box">Dat. schránka publikujícího subjektu</label>
+            <input type="text" name="subject_box" class="autocomplete" tabindex="8" id="frm-detailedSearchForm-subject_box" data-nette-rules='[{"op":":filled","rules":[{"op":":length","msg":"Zadejte 7 znakový kód schránky","arg":7}],"control":"subject_box"}]'>
+            <label class="not-required" for="frm-detailedSearchForm-subject_idnum">IČO publikujícího subjektu</label>
+            <input type="text" name="subject_idnum" class="autocomplete" tabindex="12" id="frm-detailedSearchForm-subject_idnum">
+            <label class="not-required" for="frm-detailedSearchForm-subject_address">Adresa publikujícího subjektu</label>
+            <input type="text" name="subject_address" class="autocomplete" tabindex="15" id="frm-detailedSearchForm-subject_address">
+            <div class="boxed">
+              <label class="not-required" for="frm-detailedSearchForm-value_foreign-from">Hodnota v cizí měně (od - do)</label>
+              <div class="half"><input type="text" name="value_foreign[from]" placeholder="od" alt="od" tabindex="18" id="frm-detailedSearchForm-value_foreign-from" data-nette-rules='[{"op":":filled","rules":[{"op":":float","msg":"Prosím, zadejte číslo."}],"control":"value_foreign[from]"}]'></div>
+              <div class="space">-</div><label class="hidden" for="frm-detailedSearchForm-value_foreign-to">Do</label>
+              <div class="half"><input type="text" name="value_foreign[to]" placeholder="do" alt="do" tabindex="19" id="frm-detailedSearchForm-value_foreign-to" data-nette-rules='[{"op":":filled","rules":[{"op":":float","msg":"Prosím, zadejte číslo."}],"control":"value_foreign[to]"}]'></div>
+            </div>
+            <label class="not-required" for="frm-detailedSearchForm-foreign_currency">Označení měny</label>
+            <input type="text" name="foreign_currency" tabindex="24" id="frm-detailedSearchForm-foreign_currency">
+            <label class="not-required" for="frm-detailedSearchForm-contract_reference_number">Evidenční číslo zakázky z VVZ</label>
+            <input type="text" name="contract_reference_number" class="autocomplete" id="frm-detailedSearchForm-contract_reference_number">
+          </fieldset>
+        </div>
+
+        <div class="w-col w-col-4">
+          <fieldset>
+              <label for="frm-detailedSearchForm-contract_id">ID smlouvy</label>
+              <input type="text" name="contract_id" tabindex="3" id="frm-detailedSearchForm-contract_id" data-nette-rules='[{"op":":filled","rules":[{"op":":integer","msg":"Prosím, zadejte celé číslo."}],"control":"contract_id"}]'>
+            <label for="frm-detailedSearchForm-party_name">Název smluvní strany</label>
+            <input type="text" name="party_name" class="autocomplete" tabindex="6" id="frm-detailedSearchForm-party_name">
+            <label class="not-required" for="frm-detailedSearchForm-party_box">Dat. schránka smluvní strany</label>
+            <input type="text" name="party_box" class="autocomplete" tabindex="9" id="frm-detailedSearchForm-party_box" data-nette-rules='[{"op":":filled","rules":[{"op":":length","msg":"Zadejte 7 znakový kód schránky","arg":7}],"control":"party_box"}]'>
+            <label class="not-required" for="frm-detailedSearchForm-party_idnum">IČO smluvní strany</label>
+            <input type="text" name="party_idnum" class="autocomplete" tabindex="13" id="frm-detailedSearchForm-party_idnum">
+            <label class="not-required" for="frm-detailedSearchForm-party_address">Adresa smluvní strany</label>
+            <input type="text" name="party_address" class="autocomplete" tabindex="16" id="frm-detailedSearchForm-party_address">
+            <div class="boxed">
+              <label class="not-required" for="frm-detailedSearchForm-value_no_vat-from">Hodnota bez DPH v CZK (od - do)</label>
+              <div class="half"><input type="text" name="value_no_vat[from]" placeholder="od" alt="od" tabindex="20" id="frm-detailedSearchForm-value_no_vat-from" data-nette-rules='[{"op":":filled","rules":[{"op":":float","msg":"Prosím, zadejte číslo."}],"control":"value_no_vat[from]"}]'></div>
+              <div class="space">-</div><label class="hidden" for="frm-detailedSearchForm-value_no_vat-to">Do</label>
+              <div class="half"><input type="text" name="value_no_vat[to]" placeholder="do" alt="do" tabindex="21" id="frm-detailedSearchForm-value_no_vat-to" data-nette-rules='[{"op":":filled","rules":[{"op":":float","msg":"Prosím, zadejte číslo."}],"control":"value_no_vat[to]"}]'></div>
+            </div>
+            <label class="file-warning" for="frm-detailedSearchForm-file_text">Text ve smlouvě</label>
+            <input type="text" name="file_text" tabindex="25" id="frm-detailedSearchForm-file_text">
+          </fieldset>
+        </div>
+
+        <div class="w-col w-col-4">
+          <fieldset>
+              <label for="frm-detailedSearchForm-version_id">ID verze</label>
+              <input type="text" name="version_id" tabindex="4" id="frm-detailedSearchForm-version_id" data-nette-rules='[{"op":":filled","rules":[{"op":":integer","msg":"Prosím, zadejte celé číslo."}],"control":"version_id"}]'>
+            <label class="not-required" for="frm-detailedSearchForm-contr_num">Číslo smlouvy / č.j.</label>
+            <input type="text" name="contr_num" class="autocomplete" tabindex="7" id="frm-detailedSearchForm-contr_num">
+            <div class="boxed">
+              <label for="frm-detailedSearchForm-sign_date-from">Datum uzavření smlouvy (od - do)</label>
+              <div class="half"><input type="text" name="sign_date[from]" class="date" placeholder="od" alt="od" tabindex="10" id="frm-detailedSearchForm-sign_date-from" data-nette-rules='[{"op":":filled","rules":[{"op":":pattern","msg":"Nevalidní formát data (dd.mm.rrrr)","arg":"\\d{1,2}\\.\\d{1,2}.\\d{4}"}],"control":"sign_date[from]"}]'></div>
+              <div class="space">-</div><label class="hidden" for="frm-detailedSearchForm-sign_date-to">do</label>
+              <div class="half"><input type="text" name="sign_date[to]" class="date" placeholder="do" alt="do" tabindex="11" id="frm-detailedSearchForm-sign_date-to" data-nette-rules='[{"op":":filled","rules":[{"op":":pattern","msg":"Nevalidní formát data (dd.mm.rrrr)","arg":"\\d{1,2}\\.\\d{1,2}.\\d{4}"}],"control":"sign_date[to]"}]'></div>
+            </div>
+            <label for="frm-detailedSearchForm-contract_descr">Předmět smlouvy</label>
+            <input type="text" name="contract_descr" class="autocomplete" tabindex="14" id="frm-detailedSearchForm-contract_descr">
+            <label class="not-required" for="frm-detailedSearchForm-sign_person_name">Podepisující osoba</label>
+            <input type="text" name="sign_person_name" class="autocomplete" tabindex="17" id="frm-detailedSearchForm-sign_person_name">
+            <div class="boxed">
+              <label class="not-required" for="frm-detailedSearchForm-value_vat-from">Hodnota vč. DPH v CZK (od - do)</label>
+              <div class="half"><input type="text" name="value_vat[from]" placeholder="od" alt="od" tabindex="22" id="frm-detailedSearchForm-value_vat-from" data-nette-rules='[{"op":":filled","rules":[{"op":":float","msg":"Prosím, zadejte číslo."}],"control":"value_vat[from]"}]'></div>
+              <div class="space">-</div><label class="hidden" for="frm-detailedSearchForm-value_vat-to">Do</label>
+              <div class="half"><input type="text" name="value_vat[to]" placeholder="do" alt="do" tabindex="23" id="frm-detailedSearchForm-value_vat-to" data-nette-rules='[{"op":":filled","rules":[{"op":":float","msg":"Prosím, zadejte číslo."}],"control":"value_vat[to]"}]'></div>
+            </div>
+            <label for="frm-detailedSearchForm-search_type">Rozsah vyhledávání</label>
+            <select name="search_type" tabindex="26" id="frm-detailedSearchForm-search_type" required data-nette-rules='[{"op":":filled","msg":"Pole je povinné."}]'><option value="0" selected>jen poslední verze</option><option value="1">všechny verze</option></select>
+          </fieldset>
+        </div>
+        <div class="clear"></div>
+        <div class="buttons">
+          <input type="submit" name="search" class="w-button btn ajax" tabindex="27" value="Vyhledat">
+          <input type="submit" name="export" class="w-button btn" tabindex="28" value="Exportovat do XLSX">
+        </div>
+      <input type="hidden" name="do" value="detailedSearchForm-submit"></form>
+
+
+      <p><sup>1)</sup> Vyhledávání podle označeného pole nemusí poskytnout úplné výsledky, protože jeho vyplnění není při zveřejňování smlouvy povinné.</p>
+      <p><sup>2)</sup> Přiložené dokumenty, které byly zveřejněny bez textové vrstvy, nebudou prohledány.</p>
+
+      <div class="w-row top-news">
+        <h2 class="results">Vyhledané smlouvy na základě kritérií</h2>
+        <p><input type="button" value="Změna kritérií" class="w-button btn" id="scroll-top" /></p>
+<div id="snippet-searchResultList-list">
+</div>      </div>
+    </div>
+  </div>
+</section>
+  <footer class="w-section footer" role="contentinfo" id="footer">
+    <div class="w-clearfix container">
+      <div class="links">
+        <ul>
+              <li><a href="/stranka/zpracovani-cookies">Zpracování cookies</a></li>
+              <li><a href="/stranka/prohlaseni-o-pristupnosti">Prohlášení o přístupnosti</a></li>
+        </ul>
+      </div>
+      <div class="logo">
+      </div>
+      <div class="copyright">v1.7.0 • 2023 © Digitální a informační agentura • Informace jsou poskytovány v souladu se zákonem č. 106/1999 Sb., o svobodném přístupu k informacím.
+      </div>
+    </div>
+  </footer>
+  <script type="text/javascript" src="/js/jquery.min.js"></script>
+  <script type="text/javascript" src="/js/app.js"></script>
+  <script src="/js/doubletaptogo.js"></script>
+  <script nonce="720edfaf3809e3fc2e5bbaf9ad63d0ea">
+    $('#toggle').click(function() {
+        $('.toggle').slideToggle('fast');
+        return false;
+    });
+  </script>
+<script type="text/javascript" src="/js/jquery-ui.min.js"></script>
+<script type="text/javascript" src="/js/datepicker.js"></script>
+<script type="text/javascript" src="/js/live-form-validation.js"></script>
+<script type="text/javascript" src="/js/nette.ajax.js"></script>
+<script type="text/javascript" src="/js/overlay.js"></script>
+<script type="text/javascript" nonce="720edfaf3809e3fc2e5bbaf9ad63d0ea">
+    $('input.autocomplete').each(function () {
+      const $input = $(this); // uzavření aktuálního inputu
+      $input.autocomplete({
+        source: function (request, response) {
+          const fieldName = $input.attr('name');
+          $.getJSON("/vyhledavani?do=whisperer", {
+            fieldName: fieldName,
+            value: request.term
+          }, response);
+        },
+        minLength: 1
+      });
+    });
+
+    $('label.not-required').each(function() {
+        $(this).append('<span class="right">(1)</span>');
+    });
+    $('label.file-warning').each(function() {
+        $(this).append('<span class="right">(2)</span>');
+    });
+    $.nette.init();
+
+    function scrollTop() {
+        $('html, body').animate({
+            scrollTop: $("h2.top").offset().top
+        }, 500);
+    }
+
+    function scrollResults() {
+        $('html, body').animate({
+            scrollTop: $("h2.results").offset().top
+        }, 500);
+    }
+
+    
+
+    $.nette.ext('success', {
+        success: scrollResults
+    });
+
+    $('#scroll-top').click(scrollTop);
+
+    $(document).ready(function () {
+        var _lastTh = $('table.contractListAll').find('thead.theader th:last');
+        _lastTh.replaceWith('<td class="no-sort"></td>');
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Node / Vite (registr-board)
+registr-board/node_modules/
+registr-board/dist/
+
+# Vygenerované výstupy (znovu z exportu / skriptů)
+output/
+
+# Office / exporty ISRS (citlivá data, velké soubory — nedávat na veřejný Git)
+*.xlsx
+~$*
+
+# Windows
+desktop.ini
+
+# OS
+.DS_Store
+Thumbs.db
