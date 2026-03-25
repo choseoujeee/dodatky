@@ -1,0 +1,4 @@
+[build]
+publish = "registr-board/dist"
+command = "echo \"Using prebuilt registr-board/dist (Netlify)\""
+
