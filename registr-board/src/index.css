@@ -298,3 +298,99 @@ a.link {
   align-items: center;
   margin-top: 0.75rem;
 }
+
+.progress-outer {
+  width: 100%;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-inner {
+  height: 100%;
+  width: 0%;
+  background: #1d4ed8;
+}
+
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.step.active {
+  border-color: #1d4ed8;
+  background: #eff6ff;
+  color: #0f172a;
+}
+
+.cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem;
+}
+
+.sod-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 0.9rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.sod-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sod-delta {
+  font-weight: 800;
+  font-size: 1.08rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.sod-title {
+  font-weight: 700;
+  margin-top: 0.4rem;
+  line-height: 1.25;
+}
+
+.sod-subtitle {
+  color: #475569;
+  font-size: 0.92rem;
+  margin-top: 0.2rem;
+}
+
+.sod-metrics {
+  margin-top: 0.55rem;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sod-links {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}

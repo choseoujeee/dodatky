@@ -17,6 +17,7 @@ export type MatchMethod =
   | "no+supplier+subject"
   | "no+subject"
   | "no-only"
+  | "scrape-parent-id"
   | "none";
 
 export type ParsedRow = {
@@ -333,6 +334,66 @@ function aggregateHeuristic(
   return out;
 }
 
+function aggregateFromScrapeParentMap(
+  parsed: ParsedRow[],
+  datasetLabel: string,
+  minBasePrice: number,
+  parentIdByAddendumContractId: Record<string, string>,
+): ContractAggregateRow[] {
+  const bases = parsed.filter((r) => !r.isAddendum && isBaseSod(r.subject));
+  const adds = parsed.filter((r) => r.isAddendum);
+
+  const out: ContractAggregateRow[] = [];
+
+  for (const base of bases) {
+    if (!base.contractId) continue;
+
+    const selected = adds.filter((a) => {
+      const parentId = parentIdByAddendumContractId[a.contractId];
+      return Boolean(parentId && parentId === base.contractId);
+    });
+
+    let addendaSum = 0;
+    let addendaWithValueCount = 0;
+    const addendumUrls: string[] = [];
+
+    for (const a of selected) {
+      if (a.priceNoVat !== null) {
+        addendaSum += a.priceNoVat;
+        addendaWithValueCount += 1;
+      }
+      if (a.url) addendumUrls.push(a.url);
+    }
+
+    const basePrice = base.priceNoVat ?? 0;
+    if (basePrice < minBasePrice) continue;
+
+    const finalPrice = basePrice + addendaSum;
+    const deltaPct = basePrice !== 0 ? ((finalPrice - basePrice) / basePrice) * 100 : null;
+
+    out.push({
+      datasetLabel,
+      city: base.city,
+      supplier: base.supplier,
+      subject: base.subject,
+      contractId: base.contractId,
+      url: base.url,
+      basePrice,
+      addendaCount: selected.length,
+      addendaWithValueCount,
+      addendaSum,
+      finalPrice,
+      deltaPct,
+      matchMethod: selected.length > 0 ? "scrape-parent-id" : "none",
+      signDate: base.signDate,
+      year: parseYear(base.signDate),
+      addendumUrls,
+    });
+  }
+
+  return out;
+}
+
 /**
  * Hlavní vstup: surové řádky z exportu → agregované kmenové smlouvy s dodatky.
  */
@@ -340,7 +401,10 @@ export function buildAggregates(
   rawRows: Record<string, unknown>[],
   datasetLabel: string,
   minBasePrice: number,
-  options: { forceHeuristic: boolean },
+  options: {
+    forceHeuristic: boolean;
+    scrapeParentMap?: Record<string, string>;
+  },
 ): {
   aggregates: ContractAggregateRow[];
   navColumnKeys: string[];
@@ -348,6 +412,20 @@ export function buildAggregates(
 } {
   const { rows, navColumnKeys } = extractParsedRows(rawRows);
   const hasNav = navColumnKeys.length > 0;
+
+  const scrapeParentMap = options.scrapeParentMap;
+  const hasScrapeMap =
+    scrapeParentMap && Object.keys(scrapeParentMap).length > 0 && typeof scrapeParentMap === "object";
+
+  if (hasScrapeMap) {
+    const agg = aggregateFromScrapeParentMap(
+      rows,
+      datasetLabel,
+      minBasePrice,
+      scrapeParentMap as Record<string, string>,
+    );
+    return { aggregates: agg, navColumnKeys, usedHeuristicOnly: false };
+  }
 
   if (hasNav && !options.forceHeuristic) {
     const agg = aggregateDeterministic(rows, datasetLabel, minBasePrice);

@@ -8,6 +8,7 @@ venv/
 # Node / Vite (registr-board)
 registr-board/node_modules/
 registr-board/dist/
+node_modules/
 
 # Vygenerované výstupy (znovu z exportu / skriptů)
 output/

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -18,6 +19,7 @@ import {
 import { computeMetrics, formatMoney, formatPct, type DatasetMetrics } from "./lib/metrics";
 import {
   buildAggregates,
+  extractParsedRows,
   type ContractAggregateRow,
   type MatchMethod,
 } from "./lib/pairAndAggregate";
@@ -38,6 +40,7 @@ type Dataset = {
   raw: Record<string, unknown>[];
   aggregates: ContractAggregateRow[];
   navColumnKeys: string[];
+  scrapeParentMap?: Record<string, string>;
 };
 
 type Staged = {
@@ -53,6 +56,7 @@ function methodLabel(m: MatchMethod): string {
     "no+supplier+subject": "Číslo + dodavatel + podobnost názvu",
     "no+subject": "Číslo + podobnost názvu",
     "no-only": "Pouze číslo smlouvy",
+    "scrape-parent-id": "Scraping parent ID (deterministické)",
     none: "Bez detekovaných dodatků",
   };
   return map[m] ?? m;
@@ -131,6 +135,25 @@ export function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  const [scrapeJob, setScrapeJob] = useState<{
+    datasetId: string;
+    jobId: string;
+    status: "running" | "done" | "failed";
+    total: number;
+    processed: number;
+    errorsCount: number;
+  } | null>(null);
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 720px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
+
   useEffect(() => {
     setDatasets((ds) =>
       ds.map((d) => {
@@ -138,7 +161,7 @@ export function App() {
           d.raw,
           d.label,
           minBasePrice,
-          { forceHeuristic },
+          { forceHeuristic, scrapeParentMap: d.scrapeParentMap },
         );
         return { ...d, aggregates, navColumnKeys };
       }),
@@ -235,6 +258,122 @@ export function App() {
     downloadJson(name, toPayload(datasets, minBasePrice, forceHeuristic));
   };
 
+  const startScrapeForDataset = useCallback(
+    async (datasetId: string) => {
+      const ds = datasets.find((d) => d.id === datasetId);
+      if (!ds) return;
+      if (scrapeJob && scrapeJob.status === "running") return;
+
+      setError(null);
+      try {
+        const { rows } = extractParsedRows(ds.raw);
+        const addenda = rows
+          .filter((r) => r.isAddendum && r.contractId && r.url)
+          .map((r) => ({ addendumContractId: r.contractId, url: r.url }));
+
+        // Dedup podle contractId (někdy export obsahuje duplicity z různých verzí stejné smlouvy).
+        const uniq = new Map<string, { addendumContractId: string; url: string }>();
+        for (const a of addenda) {
+          if (!uniq.has(a.addendumContractId)) uniq.set(a.addendumContractId, a);
+        }
+        const addendaList = Array.from(uniq.values());
+
+        if (addendaList.length === 0) {
+          setError("Na této sadě nebyly detekovány dodatky s URL.");
+          return;
+        }
+
+        const jobId = `scrape-${datasetId}-${Date.now()}`;
+        const fnBase = `${window.location.origin}/.netlify/functions`;
+
+        setScrapeJob({
+          datasetId,
+          jobId,
+          status: "running",
+          total: addendaList.length,
+          processed: 0,
+          errorsCount: 0,
+        });
+
+        const bgResp = await fetch(`${fnBase}/scrape-addenda-background`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            jobId,
+            addenda: addendaList,
+            concurrency: 8,
+          }),
+        });
+
+        // Background funkce typicky vrací 202 i když ignoruje výsledné tělo.
+        if (!bgResp.ok && bgResp.status !== 202) {
+          const txt = await bgResp.text().catch(() => "");
+          throw new Error(`Scrape start failed: HTTP ${bgResp.status} ${txt}`);
+        }
+
+        const startedAt = Date.now();
+        const maxMs = 14 * 60 * 1000; // Netlify limit ~15 min, necháváme rezervu.
+
+        while (Date.now() - startedAt < maxMs) {
+          const pollResp = await fetch(`${fnBase}/scrape-addenda-result?jobId=${encodeURIComponent(jobId)}`, {
+            method: "GET",
+          });
+          if (!pollResp.ok) {
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
+
+          const data = (await pollResp.json()) as {
+            status: "running" | "done" | "failed";
+            total: number;
+            processed: number;
+            errors?: Array<{ reason: string }>;
+            mapping?: Record<string, string>;
+          };
+
+          setScrapeJob((sj) =>
+            sj
+              ? {
+                  ...sj,
+                  total: data.total,
+                  processed: data.processed,
+                  errorsCount: data.errors?.length ?? 0,
+                  status: data.status,
+                }
+              : sj,
+          );
+
+          if (data.status === "done") {
+            const mapping = data.mapping ?? {};
+            setDatasets((all) =>
+              all.map((x) => {
+                if (x.id !== datasetId) return x;
+                const { aggregates, navColumnKeys } = buildAggregates(x.raw, x.label, minBasePrice, {
+                  forceHeuristic,
+                  scrapeParentMap: mapping,
+                });
+                return { ...x, scrapeParentMap: mapping, aggregates, navColumnKeys };
+              }),
+            );
+            return;
+          }
+
+          if (data.status === "failed") {
+            throw new Error("Scrape job selhal. Zkontroluj chyby v Netlify logách.");
+          }
+
+          await new Promise((r) => setTimeout(r, 4000));
+        }
+
+        throw new Error("Scrape timeout: job se nestihl dokončit do limitu.");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        setScrapeJob((sj) => (sj ? { ...sj, status: "failed" } : sj));
+      }
+    },
+    [datasets, scrapeJob, minBasePrice, forceHeuristic],
+  );
+
   const onImportFile = async (files: FileList | null) => {
     if (!files?.[0]) return;
     setError(null);
@@ -291,11 +430,18 @@ export function App() {
 
   const kpiRows = useMemo(() => {
     if (!strictKpiOnly) return mergedRows;
-    return mergedRows.filter((r) => r.matchMethod === "id-navaznost");
+    return mergedRows.filter(
+      (r) => r.matchMethod === "id-navaznost" || r.matchMethod === "scrape-parent-id",
+    );
   }, [mergedRows, strictKpiOnly]);
 
   const showStrictWarning =
-    strictKpiOnly && mergedRows.some((r) => r.matchMethod === "id-navaznost") === false;
+    strictKpiOnly &&
+    mergedRows.some(
+      (r) => r.matchMethod === "id-navaznost" || r.matchMethod === "scrape-parent-id",
+    ) === false;
+
+  const flowStep = scrapeJob?.status === "running" ? 2 : datasets.length > 0 ? 3 : 1;
 
   const globalMetrics = useMemo(
     () => computeMetrics(kpiRows, "Vybraná data"),
@@ -348,7 +494,9 @@ export function App() {
   const pageRows = displayRows.slice(page * pageSize, (page + 1) * pageSize);
   const totalPages = Math.max(1, Math.ceil(displayRows.length / pageSize));
 
-  const anyHeuristic = mergedRows.some((r) => r.matchMethod !== "id-navaznost");
+  const anyHeuristic = mergedRows.some(
+    (r) => r.matchMethod !== "id-navaznost" && r.matchMethod !== "scrape-parent-id",
+  );
   const anyNavColumns = datasets.some((d) => d.navColumnKeys.length > 0);
 
   const duplicateLabel =
@@ -375,6 +523,12 @@ export function App() {
         </p>
       </header>
 
+      <div className="stepper" aria-label="Workflow pro scraping a report">
+        <span className={`step ${flowStep >= 1 ? "active" : ""}`}>1. Nahrát</span>
+        <span className={`step ${flowStep >= 2 ? "active" : ""}`}>2. Provázat</span>
+        <span className={`step ${flowStep >= 3 ? "active" : ""}`}>3. Report</span>
+      </div>
+
       {persistHint && (
         <div className="banner">{persistHint}</div>
       )}
@@ -400,6 +554,39 @@ export function App() {
       )}
 
       {error && <div className="banner">{error}</div>}
+
+      {scrapeJob && (
+        <div className="banner info">
+          <div style={{ fontWeight: 700, marginBottom: "0.25rem" }}>
+            {scrapeJob.status === "running" && "Scraping vazeb probíhá…"}
+            {scrapeJob.status === "done" && "Scraping dokončen."}
+            {scrapeJob.status === "failed" && "Scraping selhal."}
+          </div>
+          <div className="muted" style={{ marginBottom: "0.5rem" }}>
+            {scrapeJob.status === "running" && (
+              <>
+                {scrapeJob.processed} / {scrapeJob.total} zpracováno
+              </>
+            )}
+            {scrapeJob.status !== "running" && (
+              <>
+                chybovost: {scrapeJob.errorsCount} záznamů
+              </>
+            )}
+          </div>
+          <div className="progress-outer" aria-label="Scraping progress">
+            <div
+              className="progress-inner"
+              style={{
+                width:
+                  scrapeJob.total > 0
+                    ? `${Math.min(100, Math.round((scrapeJob.processed / scrapeJob.total) * 100))}%`
+                    : "0%",
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {showStrictWarning && (
         <div className="banner">
@@ -496,6 +683,18 @@ export function App() {
           {datasets.map((d) => (
             <span key={d.id} className="dataset-chip">
               {d.label} ({d.aggregates.length} SOD)
+              {d.navColumnKeys.length === 0 && !d.scrapeParentMap && (
+                <button
+                  type="button"
+                  className="btn secondary"
+                  style={{ fontSize: "0.7rem", padding: "0.15rem 0.4rem" }}
+                  onClick={() => void startScrapeForDataset(d.id)}
+                  disabled={Boolean(scrapeJob && scrapeJob.status === "running")}
+                  title="Scraping parent ID přes smlouvy.gov.cz"
+                >
+                  Scrape vazby
+                </button>
+              )}
               <button
                 type="button"
                 className="btn danger"
@@ -556,7 +755,7 @@ export function App() {
             checked={strictKpiOnly}
             onChange={(e) => setStrictKpiOnly(e.target.checked)}
           />
-          KPI jen z id-navaznost
+          KPI jen z deterministických vazeb
         </label>
       </section>
       <p className="muted" style={{ marginTop: "-0.5rem" }}>
@@ -681,23 +880,8 @@ export function App() {
           </div>
 
           <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th onClick={() => toggleSort("datasetLabel")}>Město (sada)</th>
-                  <th onClick={() => toggleSort("city")}>Město v datech</th>
-                  <th onClick={() => toggleSort("supplier")}>Dodavatel</th>
-                  <th onClick={() => toggleSort("subject")}>Název</th>
-                  <th onClick={() => toggleSort("basePrice")}>Původní</th>
-                  <th onClick={() => toggleSort("addendaCount")}>Dodatků</th>
-                  <th onClick={() => toggleSort("addendaSum")}>Součet dod.</th>
-                  <th onClick={() => toggleSort("finalPrice")}>Po dod.</th>
-                  <th onClick={() => toggleSort("deltaPct")}>Změna %</th>
-                  <th>Metoda</th>
-                  <th>Odkazy</th>
-                </tr>
-              </thead>
-              <tbody>
+            {isMobile ? (
+              <div className="cards-list">
                 {pageRows.map((r) => {
                   const dp = r.deltaPct ?? 0;
                   const heat =
@@ -709,36 +893,113 @@ export function App() {
                           ? "heat-mid"
                           : "";
                   return (
-                    <tr key={`${r.contractId}-${r.datasetLabel}-${r.subject.slice(0, 24)}`}>
-                      <td>{r.datasetLabel}</td>
-                      <td>{r.city}</td>
-                      <td>{r.supplier}</td>
-                      <td>{r.subject}</td>
-                      <td>{formatMoney(r.basePrice)}</td>
-                      <td>{r.addendaCount}</td>
-                      <td>{formatMoney(r.addendaSum)}</td>
-                      <td>{formatMoney(r.finalPrice)}</td>
-                      <td className={heat}>{formatPct(r.deltaPct)}</td>
-                      <td>{methodLabel(r.matchMethod)}</td>
-                      <td>
+                    <div key={`${r.contractId}-${r.datasetLabel}-${r.subject.slice(0, 24)}`} className="sod-card">
+                      <div className="sod-card-head">
+                        <div className={`sod-delta ${heat}`}>{formatPct(r.deltaPct)}</div>
+                        <div className="muted" style={{ fontSize: "0.78rem" }}>
+                          {methodLabel(r.matchMethod)}
+                        </div>
+                      </div>
+
+                      <div className="sod-title">{r.subject}</div>
+                      <div className="sod-subtitle">
+                        {r.city} — {r.supplier}
+                      </div>
+
+                      <div className="sod-metrics">
+                        <div>
+                          <span className="muted">Původní:</span> <strong>{formatMoney(r.basePrice)}</strong>
+                        </div>
+                        <div>
+                          <span className="muted">Dodatky:</span> <strong>{r.addendaCount}</strong>{" "}
+                          <span className="muted">(sum: {formatMoney(r.addendaSum)})</span>
+                        </div>
+                        <div>
+                          <span className="muted">Po dod.:</span> <strong>{formatMoney(r.finalPrice)}</strong>
+                        </div>
+                      </div>
+
+                      <div className="sod-links">
                         {r.url && (
                           <a className="link" href={r.url} target="_blank" rel="noreferrer">
                             kmen
                           </a>
                         )}
-                        {r.addendumUrls.map((u) => (
-                          <div key={u}>
-                            <a className="link" href={u} target="_blank" rel="noreferrer">
-                              dodatek
-                            </a>
-                          </div>
+                        {r.addendumUrls.slice(0, 2).map((u) => (
+                          <a key={u} className="link" href={u} target="_blank" rel="noreferrer" style={{ marginLeft: "0.5rem" }}>
+                            dodatek
+                          </a>
                         ))}
-                      </td>
-                    </tr>
+                        {r.addendumUrls.length > 2 && (
+                          <span className="muted" style={{ marginLeft: "0.5rem" }}>
+                            +{r.addendumUrls.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            ) : (
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th onClick={() => toggleSort("datasetLabel")}>Město (sada)</th>
+                    <th onClick={() => toggleSort("city")}>Město v datech</th>
+                    <th onClick={() => toggleSort("supplier")}>Dodavatel</th>
+                    <th onClick={() => toggleSort("subject")}>Název</th>
+                    <th onClick={() => toggleSort("basePrice")}>Původní</th>
+                    <th onClick={() => toggleSort("addendaCount")}>Dodatků</th>
+                    <th onClick={() => toggleSort("addendaSum")}>Součet dod.</th>
+                    <th onClick={() => toggleSort("finalPrice")}>Po dod.</th>
+                    <th onClick={() => toggleSort("deltaPct")}>Změna %</th>
+                    <th>Metoda</th>
+                    <th>Odkazy</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageRows.map((r) => {
+                    const dp = r.deltaPct ?? 0;
+                    const heat =
+                      r.deltaPct === null
+                        ? ""
+                        : dp >= outlierMinPct
+                          ? "heat-high"
+                          : dp >= 15
+                            ? "heat-mid"
+                            : "";
+                    return (
+                      <tr key={`${r.contractId}-${r.datasetLabel}-${r.subject.slice(0, 24)}`}>
+                        <td>{r.datasetLabel}</td>
+                        <td>{r.city}</td>
+                        <td>{r.supplier}</td>
+                        <td>{r.subject}</td>
+                        <td>{formatMoney(r.basePrice)}</td>
+                        <td>{r.addendaCount}</td>
+                        <td>{formatMoney(r.addendaSum)}</td>
+                        <td>{formatMoney(r.finalPrice)}</td>
+                        <td className={heat}>{formatPct(r.deltaPct)}</td>
+                        <td>{methodLabel(r.matchMethod)}</td>
+                        <td>
+                          {r.url && (
+                            <a className="link" href={r.url} target="_blank" rel="noreferrer">
+                              kmen
+                            </a>
+                          )}
+                          {r.addendumUrls.map((u) => (
+                            <div key={u}>
+                              <a className="link" href={u} target="_blank" rel="noreferrer">
+                                dodatek
+                              </a>
+                            </div>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
 
           <div className="upload-row" style={{ marginTop: "0.75rem" }}>
