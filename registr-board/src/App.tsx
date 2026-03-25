@@ -33,6 +33,7 @@ import {
   type PersistedPayloadV1,
   type StoredDataset,
 } from "./lib/storage";
+import { BUILD_DATE, BUILD_SHA } from "./lib/buildInfo";
 
 type Dataset = {
   id: string;
@@ -515,12 +516,18 @@ export function App() {
   return (
     <>
       <header>
-        <h1>Registr smluv — report pro vedení</h1>
+        <h1>
+          Registr smluv — report pro vedení
+          <span className="build-badge">v {BUILD_SHA}</span>
+        </h1>
         <p className="muted">
           Sem přetáhněte export z registru smluv (XLSX/CSV). Zobrazí se <strong>náhled analýzy</strong> —
           zkontrolujte název města a klikněte <strong>Uložit do přehledu</strong>. Postupně můžete
           přidávat další města; data zůstávají v tomto prohlížeči (lze zálohovat do JSON).
         </p>
+        <div className="build-meta muted">
+          UI build: {BUILD_SHA} • {BUILD_DATE}
+        </div>
       </header>
 
       <div className="stepper" aria-label="Workflow pro scraping a report">

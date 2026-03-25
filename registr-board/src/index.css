@@ -78,6 +78,24 @@ h2 {
   color: #64748b;
 }
 
+.build-badge {
+  margin-left: 0.6rem;
+  display: inline-block;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  font-size: 0.78rem;
+  color: #1d4ed8;
+  vertical-align: middle;
+  font-weight: 800;
+}
+
+.build-meta {
+  margin-top: 0.15rem;
+  font-size: 0.86rem;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
