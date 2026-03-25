@@ -156,6 +156,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    // Viditelný indikátor pro Netlify cache check (už jen podle UI to nemusí být zřejmé).
+    document.title = `dodatky_${BUILD_SHA}`;
+  }, []);
+
+  useEffect(() => {
     setDatasets((ds) =>
       ds.map((d) => {
         const { aggregates, navColumnKeys } = buildAggregates(
